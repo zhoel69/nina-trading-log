@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Nina Trading Log</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#eaf0f8;background:#0b1020;font-synthesis:none;text-rendering:optimizeLegibility}*{box-sizing:border-box}body{margin:0;padding:20px;background:radial-gradient(circle at top,#172447,#0b1020 58%);min-height:100vh}.wrap{max-width:1180px;margin:auto}.hero,.panel{background:#121a2d;border:1px solid #283653;border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 12px 30px #0002}.hero h1{margin:0 0 7px;font-size:clamp(25px,4vw,36px)}h2{font-size:20px}.muted,.hint{color:#aab7ce}.hint{font-size:13px;line-height:1.55}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.stat{background:#0c1427;border:1px solid #293752;border-radius:14px;padding:14px;min-width:0}.stat small{display:block;color:#aab7ce}.stat strong{display:block;font-size:clamp(19px,2.5vw,25px);margin-top:7px;overflow-wrap:anywhere}.field{display:flex;flex-direction:column;gap:6px;min-width:0}label{font-size:13px;color:#bac6da}input,select,textarea{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #344361;background:#0a1223;color:#edf3ff;font:inherit;min-width:0}textarea{min-height:76px;resize:vertical}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:750;cursor:pointer;background:#4ee0a0;color:#082017}.btn.secondary{background:#253550;color:#eef4ff}.btn.danger{background:#5a2635;color:#ffe9ee}.btn:disabled{opacity:.5;cursor:not-allowed}.status{padding:11px 12px;border-radius:10px;background:#0b1426;color:#b8c7df;margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:980px}th,td{text-align:left;padding:11px;border-bottom:1px solid #293650;font-size:13px;vertical-align:top}th{color:#afbed6;white-space:nowrap}td .btn{padding:6px 9px;font-size:12px;margin:0 3px 3px 0}.positive{color:#59e4a2!important}.negative{color:#ff8797!important}.hidden{display:none!important}.sectiontitle{margin:0 0 14px}.full{grid-column:1/-1}.split{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.badge{display:inline-block;padding:5px 9px;border-radius:99px;background:#1b2c47;color:#c7d9f6;font-size:12px}.mini{font-size:12px;color:#aab7ce}.checkline{display:flex;align-items:center;gap:8px}.checkline input{width:auto}.statline{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.notice{border-left:3px solid #f1c36d;padding:9px 12px;background:#241f17;color:#e7d6ad;border-radius:7px;font-size:13px;line-height:1.5}.authgrid{max-width:760px}.accountbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.accountmeta{min-width:0}.accountmeta strong{display:block;overflow-wrap:anywhere}.accountmeta small{display:block;color:#aab7ce;margin-top:3px}@media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.cards .stat:last-child{grid-column:1/-1}}@media(max-width:520px){body{padding:10px}.hero,.panel{padding:15px}.grid,.cards{grid-template-columns:1fr}.cards .stat:last-child{grid-column:auto}.btn{flex:1}.row .btn{min-width:120px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<section class="hero">
+  <div class="split"><div><h1>📈 Nina Trading Log</h1><div class="muted">Jurnal transaksi trading yang tersimpan di Supabase.</div></div><span class="badge" id="topBadge">Belum tersambung</span></div>
+  <p class="hint">Catat posisi yang sudah ditutup. Profit dimasukkan sebagai angka positif, rugi sebagai angka negatif. Transaksi disimpan di database Supabase, bukan localStorage. Supabase dapat menyimpan sesi login di browser agar Abang tidak harus login setiap kali membuka halaman.</p>
+</section>
+<section class="panel" id="setupPanel">
+  <h2 class="sectiontitle">1. Sambungkan Supabase</h2>
+  <div class="grid">
+    <div class="field full"><label for="projectUrl">Project URL</label><input id="projectUrl" value="https://yynjkjyzijtukyhavmqn.supabase.co" autocomplete="url"></div>
+    <div class="field full"><label for="publishableKey">Publishable key</label><input id="publishableKey" type="password" placeholder="Tempel sb_publishable_... dari Supabase" autocomplete="off" spellcheck="false"></div>
+  </div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="connectBtn">Sambungkan</button><button class="btn secondary" id="disconnectBtn">Putuskan koneksi</button></div>
+  <div class="status" id="connectionStatus" role="status">Masukkan publishable key, lalu tekan Sambungkan.</div>
+  <p class="hint">Gunakan Publishable key, bukan Secret key atau service_role. Publishable key memang untuk aplikasi browser, tetapi keamanan data tetap bergantung pada login dan kebijakan RLS di Supabase.</p>
+</section>
+<section class="panel hidden" id="authPanel">
+  <h2 class="sectiontitle">2. Akun Abang</h2>
+  <div class="grid authgrid">
+    <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" placeholder="email@contoh.com"></div>
+    <div class="field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" placeholder="Password akun Supabase"></div>
+  </div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="signInBtn">Login</button><button class="btn secondary" id="signUpBtn">Daftar akun</button><button class="btn secondary" id="resetPasswordBtn">Lupa password</button><button class="btn danger hidden" id="signOutBtn">Logout</button></div>
+  <div class="status" id="authStatus" role="status">Sambungkan proyek, lalu login atau buat akun.</div>
+  <p class="hint">Jika konfirmasi email aktif di Supabase, buka email verifikasi setelah mendaftar. Gunakan email dan password milik Abang sendiri.</p>
+</section>
+<div id="appArea" class="hidden">
+  <section class="panel accountbar" id="accountPanel">
+    <div class="accountmeta"><span class="badge">● Akun aktif</span><strong id="signedInEmail" style="margin-top:7px">-</strong><small>Data trading tersimpan di akun Supabase ini.</small></div>
+    <button class="btn danger" type="button" id="appSignOutBtn">Logout</button>
+  </section>
+  <section class="panel">
+    <div class="split"><h2 class="sectiontitle">Ringkasan seluruh riwayat</h2><span class="badge" id="accountBadge">Login</span></div>
+    <div class="cards">
+      <div class="stat"><small>Total profit kotor</small><strong id="grossWins">$0.00</strong></div>
+      <div class="stat"><small>Total rugi kotor</small><strong id="grossLosses">$0.00</strong></div>
+      <div class="stat"><small>Total biaya</small><strong id="totalFees">$0.00</strong></div>
+      <div class="stat"><small>Hasil bersih</small><strong id="netTotal">$0.00</strong></div>
+      <div class="stat"><small>Modal awal</small><strong id="capitalDisplay">$100.00</strong></div>
+      <div class="stat"><small>Saldo perkiraan</small><strong id="balanceDisplay">$100.00</strong></div>
+    </div>
+    <p class="hint">Saldo perkiraan = modal awal yang Abang masukkan + total hasil bersih yang tercatat. Ini bukan saldo live broker dan tidak termasuk deposit/penarikan kecuali Abang memperhitungkannya sendiri.</p>
+  </section>
+  <section class="panel">
+    <h2 class="sectiontitle">3. Pengaturan perhitungan</h2>
+    <div class="grid">
+      <div class="field"><label for="startingCapital">Modal awal (USD)</label><input id="startingCapital" type="number" min="0" step="0.01" value="100"></div>
+      <div class="field"><label for="taxRate">Tarif simulasi pajak (%)</label><input id="taxRate" type="number" min="0" max="100" step="0.01" value="0"></div>
+      <div class="field"><label for="idrRate">Kurs USD ke IDR (opsional)</label><input id="idrRate" type="number" min="0" step="1" placeholder="Contoh: 16000"></div>
+      <div class="field"><label for="displayCurrency">Tampilan mata uang</label><select id="displayCurrency"><option value="USD">USD</option><option value="IDR">IDR (perlu isi kurs)</option></select></div>
+    </div>
+    <div class="notice" style="margin-top:12px">Simulasi pajak hanya perkiraan matematis berdasarkan persentase yang Abang masukkan dan laba bersih periode yang dipilih. Ini bukan perhitungan atau nasihat pajak resmi. Aturan pajak bergantung pada status dan yurisdiksi Abang.</div>
+  </section>
+  <section class="panel">
+    <h2 class="sectiontitle">4. Tambah / ubah posisi yang sudah ditutup</h2>
+    <form id="tradeForm">
+      <div class="grid">
+        <div class="field"><label for="closedAt">Waktu posisi ditutup</label><input id="closedAt" type="datetime-local" required></div>
+        <div class="field"><label for="symbol">Simbol</label><input id="symbol" value="XAUUSDm" maxlength="30" required></div>
+        <div class="field"><label for="direction">Arah</label><select id="direction"><option value="BUY">BUY</option><option value="SELL">SELL</option></select></div>
+        <div class="field"><label for="lot">Lot</label><input id="lot" type="number" min="0.0001" max="99999999" step="0.0001" value="0.01" required></div>
+        <div class="field"><label for="pnl">Profit / rugi sebelum biaya (USD)</label><input id="pnl" type="number" step="0.01" placeholder="Contoh: 5.25 atau -3.10" required></div>
+        <div class="field"><label for="fees">Biaya yang belum masuk P/L (USD)</label><input id="fees" type="number" min="0" step="0.01" value="0" required></div>
+        <div class="field"><label for="ticket">Ticket broker (opsional)</label><input id="ticket" maxlength="80" placeholder="Nomor posisi / deal"></div>
+        <div class="field full"><label for="notes">Catatan (opsional)</label><textarea id="notes" maxlength="1000" placeholder="Contoh: entry pullback EMA50, alasan entry, atau evaluasi"></textarea></div>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="saveBtn" type="submit">Simpan posisi</button><button class="btn secondary" type="button" id="cancelEditBtn" disabled>Batal ubah</button><button class="btn secondary" type="reset" id="resetBtn">Kosongkan form</button></div>
+    </form>
+    <div class="status" id="formStatus" role="status">Pastikan waktu, lot, profit/rugi, dan biaya sesuai riwayat broker.</div>
+    <p class="hint">Masukkan profit sebagai angka positif dan rugi sebagai angka negatif. Masukkan biaya hanya jika komisi/swap tersebut belum dikurangkan dari P/L yang Abang catat, supaya tidak terhitung dua kali.</p>
+  </section>
+  <section class="panel">
+    <h2 class="sectiontitle">5. Rekap periode dan simulasi pajak</h2>
+    <div class="grid">
+      <div class="field"><label for="periodType">Periode</label><select id="periodType"><option value="day">Harian</option><option value="month">Bulanan</option><option value="year">Tahunan</option><option value="all">Semua riwayat</option></select></div>
+      <div class="field"><label for="periodDate">Tanggal acuan</label><input id="periodDate" type="date"></div>
+      <div class="field" style="justify-content:end"><button class="btn secondary" type="button" id="applyPeriodBtn">Terapkan rekap</button></div>
+    </div>
+    <div class="cards" style="margin-top:12px">
+      <div class="stat"><small>Posisi dalam periode</small><strong id="periodCount">0</strong></div>
+      <div class="stat"><small>Profit kotor periode</small><strong id="periodGross">$0.00</strong></div>
+      <div class="stat"><small>Rugi kotor periode</small><strong id="periodLoss">$0.00</strong></div>
+      <div class="stat"><small>Biaya periode</small><strong id="periodFees">$0.00</strong></div>
+      <div class="stat"><small>Hasil bersih periode</small><strong id="periodNet">$0.00</strong></div>
+      <div class="stat"><small>Simulasi pajak</small><strong id="periodTax">$0.00</strong></div>
+    </div>
+    <p class="hint" id="periodCaption">Pilih periode untuk menghitung rekap.</p>
+  </section>
+  <section class="panel">
+    <div class="split"><h2 class="sectiontitle">6. Riwayat posisi</h2><div class="row"><button class="btn secondary" type="button" id="csvBtn">Ekspor CSV</button><button class="btn secondary" type="button" id="refreshBtn">Muat ulang</button></div></div>
+    <div class="tablewrap"><table><thead><tr><th>Waktu tutup</th><th>Simbol</th><th>Arah</th><th>Lot</th><th>Profit/rugi</th><th>Biaya</th><th>Bersih</th><th>Ticket</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody id="tradeRows"><tr><td colspan="10">Belum ada data.</td></tr></tbody></table></div>
+    <div class="status" id="listStatus" role="status">Login untuk memuat data.</div>
+  </section>
+</div>
+<footer class="hint" style="padding:8px 4px 22px">Nina Trading Log · Catatan manual, bukan integrasi langsung dengan Exness. Ekspor CSV secara berkala sebagai cadangan.</footer>
+</main>
+<script>
+(() => {
+ 'use strict';
+ const $ = id => document.getElementById(id);
+ let client = null, currentUser = null, trades = [], editingId = null, authSubscription = null;
+ const TABLE = 'trade_positions';
+ const setStatus = (id, msg) => { $(id).textContent = String(msg ?? ''); };
+ const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const localDateTime = (d = new Date()) => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0,16); };
+ const localDateKey = value => { const d = new Date(value); if (Number.isNaN(d.getTime())) return ''; return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+ const localMonthKey = value => localDateKey(value).slice(0,7);
+ const localYearKey = value => localDateKey(value).slice(0,4);
+ const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
+ function money(n) {
+   const value = num(n), currency = $('displayCurrency').value;
+   if (currency === 'IDR') {
+     const rate = num($('idrRate').value);
+     if (rate <= 0) return 'Isi kurs USD/IDR';
+     return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(value*rate);
+   }
+   return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(value);
+ }
+ function getNet(t) { return Number.isFinite(Number(t.net_pnl)) ? num(t.net_pnl) : num(t.pnl)-num(t.fees); }
+ function showAuth() { $('authPanel').classList.toggle('hidden', !client || !!currentUser); }
+ function showApp() {
+   $('appArea').classList.toggle('hidden', !currentUser);
+   $('signedInEmail').textContent = currentUser ? (currentUser.email || 'Akun masuk') : '';
+   $('signOutBtn').classList.toggle('hidden', !currentUser);
+   $('signInBtn').classList.toggle('hidden', !!currentUser);
+   $('signUpBtn').classList.toggle('hidden', !!currentUser);
+   $('resetPasswordBtn').classList.toggle('hidden', !!currentUser);
+   $('accountBadge').textContent = currentUser ? (currentUser.email || 'Akun masuk') : 'Belum login';
+   $('topBadge').textContent = currentUser ? 'Terhubung · Login' : (client ? 'Terhubung · Belum login' : 'Belum tersambung');
+ }
+ function setEditMode(on) { editingId = on ? editingId : null; $('saveBtn').textContent = on ? 'Simpan perubahan' : 'Simpan posisi'; $('cancelEditBtn').disabled = !on; }
+ function resetTradeForm() {
+   $('tradeForm').reset(); $('closedAt').value = localDateTime(); $('symbol').value = 'XAUUSDm'; $('direction').value = 'BUY'; $('lot').value = '0.01'; $('fees').value = '0'; $('ticket').value = ''; $('notes').value = ''; setEditMode(false);
+ }
+ function periodTrades() {
+   const type = $('periodType').value, val = $('periodDate').value;
+   if (type === 'all') return trades;
+   if (!val) return trades;
+   return trades.filter(t => {
+     if (type === 'day') return localDateKey(t.closed_at) === val;
+     if (type === 'month') return localMonthKey(t.closed_at) === val.slice(0,7);
+     return localYearKey(t.closed_at) === val.slice(0,4);
+   });
+ }
+ function render() {
+   const wins = trades.reduce((s,t)=>s+(num(t.pnl)>0?num(t.pnl):0),0);
+   const losses = trades.reduce((s,t)=>s+(num(t.pnl)<0?num(t.pnl):0),0);
+   const fees = trades.reduce((s,t)=>s+num(t.fees),0);
+   const net = trades.reduce((s,t)=>s+getNet(t),0);
+   const capital = Math.max(0,num($('startingCapital').value));
+   $('grossWins').textContent = money(wins); $('grossLosses').textContent = money(losses); $('totalFees').textContent = money(fees);
+   $('netTotal').textContent = money(net); $('netTotal').className = net >= 0 ? 'positive' : 'negative';
+   $('capitalDisplay').textContent = money(capital); $('balanceDisplay').textContent = money(capital+net); $('balanceDisplay').className = capital+net >= 0 ? 'positive' : 'negative';
+   const tbody = $('tradeRows');
+   if (!trades.length) tbody.innerHTML = '<tr><td colspan="10">Belum ada transaksi.</td></tr>';
+   else tbody.innerHTML = trades.map(t => {
+     const n = getNet(t), d = new Date(t.closed_at);
+     return `<tr><td>${escapeHtml(Number.isNaN(d.getTime())?'':d.toLocaleString('id-ID'))}</td><td>${escapeHtml(t.symbol)}</td><td>${escapeHtml(t.direction)}</td><td>${escapeHtml(t.lots)}</td><td class="${num(t.pnl)>=0?'positive':'negative'}">${escapeHtml(money(t.pnl))}</td><td>${escapeHtml(money(t.fees))}</td><td class="${n>=0?'positive':'negative'}">${escapeHtml(money(n))}</td><td>${escapeHtml(t.ticket||'')}</td><td>${escapeHtml(t.notes||'')}</td><td><button class="btn secondary" type="button" data-edit="${escapeHtml(t.id)}">Ubah</button><button class="btn danger" type="button" data-delete="${escapeHtml(t.id)}">Hapus</button></td></tr>`;
+   }).join('');
+   tbody.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click',()=>beginEdit(b.dataset.edit)));
+   tbody.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click',()=>deleteTrade(b.dataset.delete)));
+   renderPeriod();
+ }
+ function renderPeriod() {
+   const filtered = periodTrades();
+   const gross = filtered.reduce((s,t)=>s+num(t.pnl),0);
+   const wins = filtered.reduce((s,t)=>s+(num(t.pnl)>0?num(t.pnl):0),0);
+   const losses = filtered.reduce((s,t)=>s+(num(t.pnl)<0?num(t.pnl):0),0);
+   const fees = filtered.reduce((s,t)=>s+num(t.fees),0);
+   const net = filtered.reduce((s,t)=>s+getNet(t),0);
+   const rate = Math.min(100,Math.max(0,num($('taxRate').value)))/100;
+   const tax = Math.max(0,net)*rate;
+   $('periodCount').textContent = String(filtered.length); $('periodGross').textContent = money(wins); $('periodLoss').textContent = money(losses);
+   $('periodFees').textContent = money(fees); $('periodNet').textContent = money(net); $('periodNet').className = net>=0?'positive':'negative'; $('periodTax').textContent = money(tax);
+   const type = $('periodType').value, date = $('periodDate').value;
+   const labels = {day:'Harian',month:'Bulanan',year:'Tahunan',all:'Semua riwayat'};
+   $('periodCaption').textContent = `${labels[type]}${type==='all'?'':(date?' · '+date:' · semua tanggal karena tanggal acuan belum diisi')}. Simulasi pajak dihitung dari hasil bersih positif periode ini × ${num($('taxRate').value)}%.`;
+ }
+ async function loadTrades() {
+   if (!client || !currentUser) return setStatus('listStatus','Sambungkan Supabase dan login terlebih dahulu.');
+   setStatus('listStatus','Memuat data dari Supabase...'); $('refreshBtn').disabled = true;
+   try {
+     const {data,error} = await client.from(TABLE).select('id,user_id,closed_at,symbol,direction,lots,pnl,fees,net_pnl,ticket,notes,created_at').order('closed_at',{ascending:false});
+     if (error) { setStatus('listStatus','Gagal memuat data: '+error.message+'\nPastikan tabel public.trade_positions dan kebijakan RLS sudah dibuat.'); return; }
+     trades = data || []; render(); setStatus('listStatus',`Berhasil memuat ${trades.length} posisi dari Supabase.`);
+   } catch(e) { setStatus('listStatus','Terjadi kesalahan: '+(e.message||String(e))); }
+   finally { $('refreshBtn').disabled = false; }
+ }
+ async function auth(action) {
+   if (!client) return setStatus('authStatus','Sambungkan proyek terlebih dahulu.');
+   const email = $('email').value.trim(), password = $('password').value;
+   if (!email) return setStatus('authStatus','Masukkan email terlebih dahulu.');
+   if (action !== 'reset' && !password) return setStatus('authStatus','Masukkan password.');
+   if (action === 'signup' && password.length < 6) return setStatus('authStatus','Gunakan password minimal 6 karakter atau ikuti aturan password proyek Supabase.');
+   setStatus('authStatus','Memproses...'); $('signInBtn').disabled = $('signUpBtn').disabled = $('resetPasswordBtn').disabled = true;
+   try {
+     let res;
+     if (action === 'signup') res = await client.auth.signUp({email,password});
+     else if (action === 'reset') res = await client.auth.resetPasswordForEmail(email,{redirectTo:location.href.split('#')[0]});
+     else res = await client.auth.signInWithPassword({email,password});
+     if (res.error) { setStatus('authStatus','Gagal: '+res.error.message); return; }
+     if (action === 'reset') { setStatus('authStatus','Jika email tersebut terdaftar, instruksi reset password akan dikirim. Periksa inbox dan folder spam.'); return; }
+     currentUser = res.data.user || null;
+     if (action === 'signup' && !res.data.session) { currentUser = null; showAuth(); showApp(); setStatus('authStatus','Pendaftaran berhasil dimulai. Buka email untuk konfirmasi, lalu kembali ke sini dan login.'); return; }
+     if (!currentUser || !res.data.session) { currentUser = null; showAuth(); showApp(); setStatus('authStatus','Belum ada sesi login. Jika konfirmasi email aktif, konfirmasi email terlebih dahulu lalu login.'); return; }
+     showAuth(); showApp(); setStatus('authStatus','Login berhasil: '+(currentUser.email||email)); await loadTrades();
+   } catch(e) { setStatus('authStatus','Terjadi kesalahan: '+(e.message||String(e))); }
+   finally { $('signInBtn').disabled = $('signUpBtn').disabled = $('resetPasswordBtn').disabled = false; }
+ }
+ async function beginEdit(id) {
+   const t = trades.find(x=>String(x.id)===String(id)); if (!t) return;
+   editingId = t.id;
+   $('closedAt').value = localDateTime(t.closed_at); $('symbol').value = t.symbol||'XAUUSDm'; $('direction').value = String(t.direction||'BUY').toUpperCase();
+   $('lot').value = t.lots; $('pnl').value = t.pnl; $('fees').value = t.fees; $('ticket').value = t.ticket||''; $('notes').value = t.notes||'';
+   setEditMode(true); setStatus('formStatus','Sedang mengubah posisi. Setelah selesai, tekan Simpan perubahan.'); $('tradeForm').scrollIntoView({behavior:'smooth',block:'start'});
+ }
+ async function deleteTrade(id) {
+   const t = trades.find(x=>String(x.id)===String(id));
+   if (!client || !currentUser || !t) return;
+   if (!confirm(`Hapus transaksi ${t.symbol} ${t.direction} tanggal ${new Date(t.closed_at).toLocaleString('id-ID')}? Tindakan ini tidak dapat dibatalkan.`)) return;
+   setStatus('listStatus','Menghapus transaksi...');
+   const {error} = await client.from(TABLE).delete().eq('id',id);
+   if (error) { setStatus('listStatus','Gagal menghapus: '+error.message); return; }
+   if (String(editingId)===String(id)) resetTradeForm();
+   await loadTrades(); setStatus('listStatus','Transaksi berhasil dihapus.');
+ }
+ $('connectBtn').addEventListener('click', async () => {
+   const url = $('projectUrl').value.trim().replace(/\/$/,''); const key = $('publishableKey').value.trim();
+   if (!window.supabase) return setStatus('connectionStatus','Library Supabase gagal dimuat. Periksa koneksi internet, lalu muat ulang halaman.');
+   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)) return setStatus('connectionStatus','Project URL tampaknya tidak valid. Gunakan URL proyek Supabase lengkap.');
+   if (!key || !key.startsWith('sb_publishable_')) return setStatus('connectionStatus','Masukkan Publishable key yang diawali sb_publishable_. Jangan gunakan Secret key.');
+   try {
+     if (authSubscription) { authSubscription.unsubscribe(); authSubscription = null; }
+     client = window.supabase.createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+     $('setupPanel').classList.add('hidden'); showAuth(); showApp();
+     setStatus('connectionStatus','Klien Supabase berhasil dibuat.'); setStatus('authStatus','Login dengan email dan password, atau pilih Daftar akun.');
+     const {data,error} = await client.auth.getSession();
+     if (error) setStatus('authStatus','Koneksi dibuat, tetapi sesi tidak dapat dibaca: '+error.message);
+     else if (data.session && data.session.user) { currentUser=data.session.user; showApp(); setStatus('authStatus','Sesi ditemukan: '+(currentUser.email||'akun masuk')); await loadTrades(); }
+     authSubscription = client.auth.onAuthStateChange((_event,session)=>{
+       currentUser = session?.user || null; showAuth(); showApp();
+       if (currentUser) { setStatus('authStatus','Login aktif: '+(currentUser.email||'akun masuk')); setTimeout(()=>loadTrades(),0); }
+       else { trades=[]; render(); setStatus('listStatus','Login kembali untuk melihat data.'); }
+     }).data.subscription;
+   } catch(e) { client=null; showAuth(); setStatus('connectionStatus','Gagal membuat klien Supabase: '+(e.message||String(e))); }
+ });
+ $('disconnectBtn').addEventListener('click',async()=>{
+   if (authSubscription) {authSubscription.unsubscribe();authSubscription=null;}
+   if (client) { try {await client.auth.signOut({scope:'local'});} catch(_) {} }
+   client=null; currentUser=null; trades=[]; editingId=null; showAuth(); showApp(); render(); $('setupPanel').classList.remove('hidden');
+   setStatus('connectionStatus','Koneksi diputus. Publishable key yang diketik akan tetap terlihat pada kolom sampai halaman ditutup.'); setStatus('authStatus','Sambungkan proyek untuk mulai.'); setStatus('listStatus','Tidak tersambung.');
+ });
+ $('signInBtn').addEventListener('click',()=>auth('signin')); $('signUpBtn').addEventListener('click',()=>auth('signup')); $('resetPasswordBtn').addEventListener('click',()=>auth('reset'));
+ async function doSignOut(){if(client)await client.auth.signOut();currentUser=null;trades=[];resetTradeForm();showAuth();showApp();render();setStatus('authStatus','Sudah logout.');setStatus('listStatus','Login kembali untuk melihat data.');}
+ $('signOutBtn').addEventListener('click',doSignOut); $('appSignOutBtn').addEventListener('click',doSignOut);
+ $('tradeForm').addEventListener('submit',async e=>{
+   e.preventDefault(); if(!client||!currentUser)return setStatus('formStatus','Sambungkan Supabase dan login terlebih dahulu.');
+   const lot=num($('lot').value), pnl=Number($('pnl').value), fees=Number($('fees').value), symbol=$('symbol').value.trim().toUpperCase(), dt=new Date($('closedAt').value);
+   if(!symbol)return setStatus('formStatus','Simbol wajib diisi.');
+   if(!Number.isFinite(lot)||lot<=0)return setStatus('formStatus','Lot harus lebih besar dari nol.');
+   if(!Number.isFinite(pnl))return setStatus('formStatus','Masukkan angka profit/rugi yang valid.');
+   if(!Number.isFinite(fees)||fees<0)return setStatus('formStatus','Biaya harus nol atau lebih besar.');
+   if(Number.isNaN(dt.getTime()))return setStatus('formStatus','Waktu tutup tidak valid.');
+   const row={closed_at:dt.toISOString(),symbol,direction:$('direction').value,lots:lot,pnl,fees,ticket:$('ticket').value.trim()||null,notes:$('notes').value.trim()||null};
+   $('saveBtn').disabled=true; setStatus('formStatus',editingId?'Menyimpan perubahan...':'Menyimpan posisi...');
+   try {
+     let result;
+     if(editingId) result=await client.from(TABLE).update(row).eq('id',editingId).select('id').single();
+     else result=await client.from(TABLE).insert({...row,user_id:currentUser.id}).select('id').single();
+     if(result.error){setStatus('formStatus','Gagal menyimpan: '+result.error.message+'\nPastikan tabel trade_positions memiliki kolom lots, pnl, fees, ticket, notes dan RLS mengizinkan akun ini.');return;}
+     setStatus('formStatus',editingId?'Perubahan berhasil disimpan.':'Posisi berhasil disimpan ke Supabase.'); resetTradeForm(); await loadTrades();
+   } catch(err) {setStatus('formStatus','Terjadi kesalahan: '+(err.message||String(err)));}
+   finally {$('saveBtn').disabled=false;}
+ });
+ $('resetBtn').addEventListener('click',()=>setTimeout(resetTradeForm,0)); $('cancelEditBtn').addEventListener('click',()=>{resetTradeForm();setStatus('formStatus','Mode ubah dibatalkan.');});
+ $('refreshBtn').addEventListener('click',loadTrades); $('applyPeriodBtn').addEventListener('click',renderPeriod);
+ ['startingCapital','taxRate','idrRate','displayCurrency'].forEach(id=>$(id).addEventListener('input',()=>{render();}));
+ $('periodType').addEventListener('change',renderPeriod); $('periodDate').addEventListener('change',renderPeriod);
+ $('csvBtn').addEventListener('click',()=>{
+   if(!trades.length)return setStatus('listStatus','Tidak ada data untuk diekspor.');
+   const cols=['id','closed_at','symbol','direction','lots','pnl','fees','net_pnl','ticket','notes'];
+   const quote=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+   const lines=[cols.join(','),...trades.map(t=>[t.id,t.closed_at,t.symbol,t.direction,t.lots,t.pnl,t.fees,getNet(t),t.ticket,t.notes].map(quote).join(','))];
+   const blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download='nina-trading-log-'+localDateKey(new Date())+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus('listStatus','Ekspor CSV berhasil dibuat. Simpan file ini sebagai cadangan.');
+ });
+ $('closedAt').value=localDateTime(); $('periodDate').value=localDateKey(new Date()); showAuth(); showApp(); render();
+})();
+</script>
+</body>
+</html>
